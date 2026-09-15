@@ -77,6 +77,7 @@ python -m talent_ai parse resume.txt
 python -m talent_ai list-candidates
 python -m talent_ai list-jobs
 python -m talent_ai match job_demo_1
+python -m talent_ai export-matches job_demo_1 --format csv
 ```
 
 Use `python -m talent_ai --help` for the full command list.
@@ -149,6 +150,7 @@ src/talent_ai/
   api/server.py       HTTP routing and JSON responses
   services/parser.py  Resume text extraction
   services/matcher.py Match scoring and ranking
+  services/report.py  CSV and JSON match reports
   domain.py           Candidate, Job, and MatchResult models
   storage.py          SQLite repository and schema
   config.py           Environment-backed settings

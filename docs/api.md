@@ -19,8 +19,8 @@ otherwise.
 
 ### `GET /api/candidates`
 
-Optional query parameter `q` searches name, email, and location. The response
-is an array:
+Optional query parameters are `q`, `limit`, and `offset`. `q` searches name,
+email, and location. The response is an array:
 
 ```json
 [
@@ -73,8 +73,8 @@ Deletes a candidate and its stored match results. Returns:
 
 ### `GET /api/jobs`
 
-Optional query parameter `q` searches title, company, and location. The
-response is an array of job objects.
+Optional query parameters are `q`, `limit`, and `offset`. `q` searches title,
+company, and location. The response is an array of job objects.
 
 ### `POST /api/jobs`
 
@@ -175,6 +175,18 @@ Response:
 ### `GET /api/matches/{job_id}`
 
 Returns previously saved match results for a job, sorted by descending score.
+
+### `GET /api/matches/{job_id}/export`
+
+Returns a serialized report for the saved match results. The default format is
+CSV; use `?format=json` for JSON output.
+
+```text
+GET /api/matches/job_demo_1/export?format=csv
+```
+
+The CSV response includes job title, candidate name, score, matched and
+missing skills, and human-readable reasons.
 
 ## Errors
 

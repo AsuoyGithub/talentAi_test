@@ -26,6 +26,7 @@ Domain models
 | `config.py` | Environment-backed runtime settings |
 | `services/parser.py` | Plain-text resume extraction and validation |
 | `services/matcher.py` | Deterministic scoring and ranking |
+| `services/report.py` | CSV and JSON match report generation |
 | `storage.py` | SQLite schema, transactions, and persistence |
 | `api/server.py` | HTTP routing and JSON serialization |
 | `cli.py` | Developer and operator command line |
