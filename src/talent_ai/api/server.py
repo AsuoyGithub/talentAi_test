@@ -47,18 +47,29 @@ class TalentAiHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 - stdlib naming
         path, query = self._parse_path()
+        params = urllib.parse.parse_qs(query)
         try:
             if path == "/health":
                 self._send_json({"status": "ok", "service": "talent-ai"})
             elif path == "/api/candidates":
-                params = urllib.parse.parse_qs(query)
                 query_text = params.get("q", [""])[0]
-                candidates = self.repository.list_candidates(query=query_text)
+                limit = self._int_query_param(params, "limit", 100, maximum=1000)
+                offset = self._int_query_param(params, "offset", 0, maximum=100000)
+                candidates = self.repository.list_candidates(
+                    query=query_text,
+                    limit=limit,
+                    offset=offset,
+                )
                 self._send_json([candidate.to_dict() for candidate in candidates])
             elif path == "/api/jobs":
-                params = urllib.parse.parse_qs(query)
                 query_text = params.get("q", [""])[0]
-                jobs = self.repository.list_jobs(query=query_text)
+                limit = self._int_query_param(params, "limit", 100, maximum=1000)
+                offset = self._int_query_param(params, "offset", 0, maximum=100000)
+                jobs = self.repository.list_jobs(
+                    query=query_text,
+                    limit=limit,
+                    offset=offset,
+                )
                 self._send_json([job.to_dict() for job in jobs])
             elif path.startswith("/api/matches/"):
                 job_id = path.removeprefix("/api/matches/")
@@ -143,6 +154,23 @@ class TalentAiHandler(BaseHTTPRequestHandler):
         if not isinstance(payload, dict):
             raise ApiError(400, "request body must be a JSON object")
         return payload
+
+    def _int_query_param(
+        self,
+        params: dict[str, list[str]],
+        name: str,
+        default: int,
+        *,
+        maximum: int,
+    ) -> int:
+        raw = params.get(name, [str(default)])[0]
+        try:
+            value = int(raw)
+        except ValueError as exc:
+            raise ApiError(400, f"{name} must be an integer") from exc
+        if value < 0 or value > maximum:
+            raise ApiError(400, f"{name} must be between 0 and {maximum}")
+        return value
 
     def _parse_resume_payload(self, payload: dict[str, Any]) -> Any:
         text = payload.get("text")
@@ -242,4 +270,3 @@ def serve(settings: Settings | None = None) -> None:
         print("\nStopping TalentAI")
     finally:
         server.server_close()
-
