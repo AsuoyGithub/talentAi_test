@@ -1,0 +1,11 @@
+services:
+  talent-ai:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      TALENT_AI_DB: /data/talent_ai.db
+      TALENT_AI_HOST: 0.0.0.0
+      TALENT_AI_PORT: "8080"
+    volumes:
+      - ./data:/data
