@@ -107,6 +107,42 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(status, 201)
         self.assertEqual(candidate["email"], "ada.resume@example.com")
 
+    def test_candidate_list_pagination_and_delete(self) -> None:
+        first = self.request(
+            "POST",
+            "/api/candidates",
+            {
+                "name": "Page One",
+                "email": "page.one@example.com",
+                "skills": ["python"],
+            },
+        )
+        second = self.request(
+            "POST",
+            "/api/candidates",
+            {
+                "name": "Page Two",
+                "email": "page.two@example.com",
+                "skills": ["sql"],
+            },
+        )
+        self.assertEqual(first[0], 201)
+        self.assertEqual(second[0], 201)
+
+        status, page = self.request(
+            "GET",
+            "/api/candidates?limit=1&offset=0",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(len(page), 1)
+
+        status, deleted = self.request(
+            "DELETE",
+            f"/api/candidates/{first[1]['id']}",
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(deleted["deleted"])
+
     def test_invalid_json_is_rejected(self) -> None:
         request = urllib.request.Request(
             self.base_url + "/api/candidates",
@@ -121,4 +157,3 @@ class ApiTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
