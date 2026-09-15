@@ -143,6 +143,38 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(deleted["deleted"])
 
+    def test_match_export_endpoint_returns_csv(self) -> None:
+        _, candidate = self.request(
+            "POST",
+            "/api/candidates",
+            {
+                "name": "Export Candidate",
+                "email": "export.candidate@example.com",
+                "skills": ["python"],
+            },
+        )
+        _, job = self.request(
+            "POST",
+            "/api/jobs",
+            {
+                "title": "Export Job",
+                "company": "Acme",
+                "required_skills": ["python"],
+            },
+        )
+        self.request("POST", "/api/matches", {"job_id": job["id"]})
+
+        request = urllib.request.Request(
+            self.base_url + f"/api/matches/{job['id']}/export?format=csv"
+        )
+        with urllib.request.urlopen(request, timeout=5) as response:
+            body = response.read().decode("utf-8")
+            content_type = response.headers["Content-Type"]
+
+        self.assertIn("text/csv", content_type)
+        self.assertIn("candidate_name", body)
+        self.assertIn(candidate["name"], body)
+
     def test_invalid_json_is_rejected(self) -> None:
         request = urllib.request.Request(
             self.base_url + "/api/candidates",
