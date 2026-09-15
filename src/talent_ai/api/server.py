@@ -12,6 +12,7 @@ from talent_ai.config import Settings, load_settings
 from talent_ai.domain import Candidate, Job, MatchResult, new_id, utc_now
 from talent_ai.services.matcher import MatchingEngine
 from talent_ai.services.parser import ResumeParser
+from talent_ai.services.report import build_match_report
 from talent_ai.storage import SqliteRepository
 
 
@@ -71,6 +72,26 @@ class TalentAiHandler(BaseHTTPRequestHandler):
                     offset=offset,
                 )
                 self._send_json([job.to_dict() for job in jobs])
+            elif path.startswith("/api/matches/") and path.endswith("/export"):
+                job_id = path.removeprefix("/api/matches/").removesuffix("/export")
+                job = self._require_job(job_id)
+                results = self.repository.list_match_results(job_id)
+                candidates: dict[str, Candidate] = {}
+                for result in results:
+                    candidate = self.repository.get_candidate(result.candidate_id)
+                    if candidate is not None:
+                        candidates[result.candidate_id] = candidate
+                report_format = params.get("format", ["csv"])[0].lower()
+                try:
+                    content_type, body = build_match_report(
+                        job,
+                        results,
+                        candidates,
+                        report_format=report_format,
+                    )
+                except ValueError as exc:
+                    raise ApiError(400, str(exc)) from exc
+                self._send_text(body, content_type)
             elif path.startswith("/api/matches/"):
                 job_id = path.removeprefix("/api/matches/")
                 self._require_job(job_id)
@@ -231,6 +252,15 @@ class TalentAiHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_text(self, body: str, content_type: str, *, status: int = 200) -> None:
+        encoded = body.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(encoded)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(encoded)
 
     def _send_error(self, status: int, message: str) -> None:
         self._send_json({"error": message}, status=status)
