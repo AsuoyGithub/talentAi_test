@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 from typing import Sequence
 
 from talent_ai.config import load_settings
@@ -11,6 +12,7 @@ from talent_ai.domain import Candidate, Job, new_id
 from talent_ai.seed import seed_demo_data
 from talent_ai.services.matcher import MatchingEngine
 from talent_ai.services.parser import ResumeParser
+from talent_ai.services.report import build_match_report
 from talent_ai.storage import SqliteRepository
 
 
@@ -32,6 +34,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     match_parser = subparsers.add_parser("match", help="rank candidates for a job")
     match_parser.add_argument("job_id")
+
+    export_parser = subparsers.add_parser(
+        "export-matches",
+        help="export stored match results as CSV or JSON",
+    )
+    export_parser.add_argument("job_id")
+    export_parser.add_argument(
+        "--format",
+        choices=("csv", "json"),
+        default="csv",
+    )
+    export_parser.add_argument("--output", default="-")
 
     candidate_parser = subparsers.add_parser("add-candidate", help="create a candidate")
     candidate_parser.add_argument("--name", required=True)
@@ -105,6 +119,32 @@ def main(argv: Sequence[str] | None = None) -> int:
                 name = candidate.name if candidate else result.candidate_id
                 print(f"{result.score:>6.2f}\t{name}")
             return 0
+        if args.command == "export-matches":
+            job = repository.get_job(args.job_id)
+            if job is None:
+                print(f"job not found: {args.job_id}")
+                return 1
+            results = repository.list_match_results(args.job_id)
+            candidates = {
+                result.candidate_id: repository.get_candidate(result.candidate_id)
+                for result in results
+            }
+            candidates = {
+                candidate_id: candidate
+                for candidate_id, candidate in candidates.items()
+                if candidate is not None
+            }
+            _, body = build_match_report(
+                job,
+                results,
+                candidates,
+                report_format=args.format,
+            )
+            if args.output == "-":
+                print(body, end="")
+            else:
+                Path(args.output).write_text(body, encoding="utf-8")
+            return 0
         if args.command == "add-candidate":
             candidate = Candidate(
                 id=new_id("candidate"),
@@ -139,4 +179,3 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
